@@ -20,6 +20,8 @@ type DiffOptions struct {
 	Base string
 	// The timeout duration before giving up for each shell command execution. The
 	// default timeout duration will be used when not supplied.
+	//
+	// Deprecated: Use CommandOptions.Timeout instead.
 	Timeout time.Duration
 	// The additional options to be passed to the underlying git.
 	CommandOptions
@@ -45,7 +47,10 @@ func (r *Repository) Diff(rev string, maxFiles, maxFileLines, maxLineChars int, 
 				AddOptions(opt.CommandOptions).
 				AddArgs("--full-index", rev)
 		} else {
-			c, _ := commit.Parent(0)
+			c, err := commit.Parent(0)
+			if err != nil {
+				return nil, err
+			}
 			cmd = cmd.AddArgs("diff").
 				AddOptions(opt.CommandOptions).
 				AddArgs("--full-index", "-M", c.ID.String(), rev)
@@ -111,7 +116,10 @@ func (r *Repository) RawDiff(rev string, diffType RawDiffFormat, w io.Writer, op
 				AddOptions(opt.CommandOptions).
 				AddArgs("--full-index", rev)
 		} else {
-			c, _ := commit.Parent(0)
+			c, err := commit.Parent(0)
+			if err != nil {
+				return err
+			}
 			cmd = cmd.AddArgs("diff").
 				AddOptions(opt.CommandOptions).
 				AddArgs("--full-index", "-M", c.ID.String(), rev)
@@ -120,12 +128,15 @@ func (r *Repository) RawDiff(rev string, diffType RawDiffFormat, w io.Writer, op
 		if commit.ParentsCount() == 0 {
 			cmd = cmd.AddArgs("format-patch").
 				AddOptions(opt.CommandOptions).
-				AddArgs("--full-index", "--no-signature", "--stdout", "--root", rev)
+				AddArgs("--full-index", "--no-signoff", "--no-signature", "--stdout", "--root", rev)
 		} else {
-			c, _ := commit.Parent(0)
+			c, err := commit.Parent(0)
+			if err != nil {
+				return err
+			}
 			cmd = cmd.AddArgs("format-patch").
 				AddOptions(opt.CommandOptions).
-				AddArgs("--full-index", "--no-signature", "--stdout", rev+"..."+c.ID.String())
+				AddArgs("--full-index", "--no-signoff", "--no-signature", "--stdout", rev+"..."+c.ID.String())
 		}
 	default:
 		return fmt.Errorf("invalid diffType: %s", diffType)

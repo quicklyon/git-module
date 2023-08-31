@@ -39,7 +39,11 @@ type Reference struct {
 type ShowRefVerifyOptions struct {
 	// The timeout duration before giving up for each shell command execution. The
 	// default timeout duration will be used when not supplied.
+	//
+	// Deprecated: Use CommandOptions.Timeout instead.
 	Timeout time.Duration
+	// The additional options to be passed to the underlying git.
+	CommandOptions
 }
 
 var ErrReferenceNotExist = errors.New("reference does not exist")
@@ -52,7 +56,8 @@ func ShowRefVerify(repoPath, ref string, opts ...ShowRefVerifyOptions) (string, 
 		opt = opts[0]
 	}
 
-	stdout, err := NewCommand("show-ref", "--verify", ref).RunInDirWithTimeout(opt.Timeout, repoPath)
+	cmd := NewCommand("show-ref", "--verify", ref).AddOptions(opt.CommandOptions)
+	stdout, err := cmd.RunInDirWithTimeout(opt.Timeout, repoPath)
 	if err != nil {
 		if strings.Contains(err.Error(), "not a valid ref") {
 			return "", ErrReferenceNotExist
@@ -137,19 +142,23 @@ type SymbolicRefOptions struct {
 	Ref string
 	// The timeout duration before giving up for each shell command execution. The
 	// default timeout duration will be used when not supplied.
+	//
+	// Deprecated: Use CommandOptions.Timeout instead.
 	Timeout time.Duration
+	// The additional options to be passed to the underlying git.
+	CommandOptions
 }
 
 // SymbolicRef returns the reference name (e.g. "refs/heads/master") pointed by
-// the symbolic ref. It returns an empty string and nil error when doing set
-// operation.
-func (r *Repository) SymbolicRef(opts ...SymbolicRefOptions) (string, error) {
+// the symbolic ref in the repository in given path. It returns an empty string
+// and nil error when doing set operation.
+func SymbolicRef(repoPath string, opts ...SymbolicRefOptions) (string, error) {
 	var opt SymbolicRefOptions
 	if len(opts) > 0 {
 		opt = opts[0]
 	}
 
-	cmd := NewCommand("symbolic-ref")
+	cmd := NewCommand("symbolic-ref").AddOptions(opt.CommandOptions)
 	if opt.Name == "" {
 		opt.Name = "HEAD"
 	}
@@ -158,11 +167,18 @@ func (r *Repository) SymbolicRef(opts ...SymbolicRefOptions) (string, error) {
 		cmd.AddArgs(opt.Ref)
 	}
 
-	stdout, err := cmd.RunInDirWithTimeout(opt.Timeout, r.path)
+	stdout, err := cmd.RunInDirWithTimeout(opt.Timeout, repoPath)
 	if err != nil {
 		return "", err
 	}
 	return strings.TrimSpace(string(stdout)), nil
+}
+
+// SymbolicRef returns the reference name (e.g. "refs/heads/master") pointed by
+// the symbolic ref. It returns an empty string and nil error when doing set
+// operation.
+func (r *Repository) SymbolicRef(opts ...SymbolicRefOptions) (string, error) {
+	return SymbolicRef(r.path, opts...)
 }
 
 // ShowRefOptions contains optional arguments for listing references.
@@ -177,6 +193,8 @@ type ShowRefOptions struct {
 	Patterns []string
 	// The timeout duration before giving up for each shell command execution. The
 	// default timeout duration will be used when not supplied.
+	//
+	// Deprecated: Use CommandOptions.Timeout instead.
 	Timeout time.Duration
 	// The additional options to be passed to the underlying git.
 	CommandOptions
@@ -237,13 +255,17 @@ func (r *Repository) Branches() ([]string, error) {
 
 // DeleteBranchOptions contains optional arguments for deleting a branch.
 //
-// // Docs: https://git-scm.com/docs/git-branch
+// Docs: https://git-scm.com/docs/git-branch
 type DeleteBranchOptions struct {
 	// Indicates whether to force delete the branch.
 	Force bool
 	// The timeout duration before giving up for each shell command execution. The
 	// default timeout duration will be used when not supplied.
+	//
+	// Deprecated: Use CommandOptions.Timeout instead.
 	Timeout time.Duration
+	// The additional options to be passed to the underlying git.
+	CommandOptions
 }
 
 // DeleteBranch deletes the branch from the repository in given path.
@@ -253,7 +275,7 @@ func DeleteBranch(repoPath, name string, opts ...DeleteBranchOptions) error {
 		opt = opts[0]
 	}
 
-	cmd := NewCommand("branch")
+	cmd := NewCommand("branch").AddOptions(opt.CommandOptions)
 	if opt.Force {
 		cmd.AddArgs("-D")
 	} else {
